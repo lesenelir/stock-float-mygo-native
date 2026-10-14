@@ -1,0 +1,6 @@
+{
+  "name": "stock-float-mygo-native",
+  "identifier": "com.example.stockfloatmygonative",
+  "version": "0.1.0",
+  "out": "build"
+}
