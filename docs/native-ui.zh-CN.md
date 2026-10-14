@@ -50,6 +50,7 @@ Store 变化 → panelWindow.Invalidate()（请求一帧）→ MyGo 在主线程
 | 按 symbol 复用 DOM 节点，用 WAAPI 做闪烁 | `c.Key(symbol)` 保持行的身份，用 `Keyframes` 做闪烁 |
 | `setInterval` 每分钟检查是否过期 | `c.After(下一行过期还剩多久)`，到点才画一帧 |
 | `ResizeObserver` → `Panel.resize` | 读上一帧的 `content.Bounds()` → `fitPanel` |
+| CSS `font: 500 12px/1.25 -apple-system` + `-webkit-font-smoothing: antialiased` | `flat_text.go`：`ui.Shape` + `Painter.Glyphs`，`ui.Font{Weight: 500, Antialiased: true}` |
 | CSS mask 给 PNG 图标上色 | `Painter.ImageRegion(..., ImageOptions{Tint})` |
 | `isCallError(err)` 显示"无法识别" | `ui.Field(...).Error(f.invalid)`，输入框自动变红框 |
 | 页面里 `--app-region: drag` / `contextmenu`（只用于 Linux 和 Windows） | macOS 上仍由 `native_darwin.go` 处理拖动和右键 |
@@ -74,7 +75,8 @@ tt.HasText("Not recognized: 苹果, 1234") // true
 1. **隐藏的原生 UI 窗口不绘制帧。** 网页版是"窗口先隐藏，页面量好尺寸再显示"。原生版照搬后，面板永远没出现：视图拿不到上一帧的 `Bounds()`，也就永远不会去显示窗口。现在的做法是：按行数估一个尺寸，立刻显示；第一帧量到真实尺寸后再调整，左上角不动。设置窗口同理。
 2. **`mygo.App.Locale()` 会跳到主线程等待。** 在测试里没有运行中的 App，`Tester` 卡死在这里。改为启动时在 `main` 里读一次，存进 `App.locale`。
 3. **在视图里改窗口尺寸要推迟。** 视图在构建帧的时候运行，不能在里面同步 `SetBounds`。所以用 `go mygo.RunOnMain(...)`，等这一帧结束后再改。
-4. **元素只在当前这一帧有效。** `ui.Element` 不能存进 App 的状态里（`go tool mygo vet .` 会检查）。要跨帧保留的东西（行情、上次价格、闪烁计数）放在 `App` 的字段里；行的身份靠 `c.Key(symbol)` 维持。
+4. **原生文字比网页文字粗。** 字重映射并没有错：`FontWeight(500)` 和 WebKit 用的是同一个 Medium 字形。差别在字体平滑：MyGo 按 AppKit 的默认方式绘制元素文字，会开启字体平滑，笔画被加粗；网页设置了 `-webkit-font-smoothing: antialiased`，关掉了平滑。v0.4.8 里只有自己绘制的文字可以关掉平滑（`ui.Font{Antialiased: true}`，用 `ui.Shape` 排版、`Painter.Glyphs` 绘制），所以 `flat_text.go` 按网页 CSS 的同一套参数（系统字体、字号、500 字重、`tnum`、1.25 倍行高）自己画面板文字，颜色也换成网页 CSS 里的值。改完后两个面板的尺寸都是 204×178，并排截图几乎看不出差别。会换行的提示文字（断线、新版本）仍用 `ui.Text`。
+5. **元素只在当前这一帧有效。** `ui.Element` 不能存进 App 的状态里（`go tool mygo vet .` 会检查）。要跨帧保留的东西（行情、上次价格、闪烁计数）放在 `App` 的字段里；行的身份靠 `c.Key(symbol)` 维持。
 
 ## 四、体积与内存（实测）
 

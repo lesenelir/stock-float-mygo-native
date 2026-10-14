@@ -45,27 +45,28 @@ type flash struct {
 	color ui.Color
 }
 
-// The colors of gains and losses: macOS's system green and red, which are
-// brighter in the dark.
-type palette struct{ green, red, orange ui.Color }
+// palette is the panel's colors, the web version's: macOS's label colors
+// for text, and its system green, red and orange, brighter in the dark.
+type palette struct{ text, muted, green, red, gray, orange ui.Color }
 
 func colors(t *ui.Theme) palette {
 	if t.Dark {
-		return palette{ui.Hex("#30d158"), ui.Hex("#ff453a"), ui.Hex("#ff9f0a")}
+		return palette{ui.RGBA(255, 255, 255, 0.9), ui.RGBA(255, 255, 255, 0.55),
+			ui.Hex("#30d158"), ui.Hex("#ff453a"), ui.Hex("#98989d"), ui.Hex("#ff9f0a")}
 	}
-	return palette{ui.Hex("#34c759"), ui.Hex("#ff3b30"), ui.Hex("#ff9500")}
+	return palette{ui.RGBA(0, 0, 0, 0.85), ui.RGBA(0, 0, 0, 0.5),
+		ui.Hex("#34c759"), ui.Hex("#ff3b30"), ui.Hex("#8e8e93"), ui.Hex("#ff9500")}
 }
 
 // tint is the color of a change: green or red as the user chose, muted for
 // none, and plain, which keeps the text's color, in the no-color scheme.
-func tint(change float64, up config.UpColor, t *ui.Theme, plain ui.Color) ui.Color {
+func tint(change float64, up config.UpColor, p palette, plain ui.Color) ui.Color {
 	if up == config.UpMono {
 		return plain
 	}
 	if change == 0 {
-		return t.TextMuted
+		return p.muted
 	}
-	p := colors(t)
 	if (change > 0) == (up == config.UpGreen) {
 		return p.green
 	}
@@ -84,9 +85,10 @@ func percentText(percent float64) string { return fmt.Sprintf("%+.2f%%", percent
 // panelView builds the floating panel: one line per symbol with its price
 // and daily change, a second line outside the regular session, and what is
 // wrong when a data source is down. MyGo runs it on the main thread for
-// every frame; the store asks for one when a quote arrives.
+// every frame; the store asks for one when a quote arrives. Its sizes are
+// the web version's CSS, in DIPs.
 func (a *App) panelView(c *ui.Context) {
-	t := c.Theme()
+	p := colors(c.Theme())
 	// The HUD material behind the window shows where the view draws nothing.
 	if c.Vibrancy() {
 		c.Root().Background(ui.Transparent)
@@ -96,8 +98,7 @@ func (a *App) panelView(c *ui.Context) {
 	now := c.Now()
 	var nextStale time.Time
 
-	content := ui.Column(c).Width(204 * scale).Padding(6).Gap(2).
-		FontSize(12 * scale).FontWeight(500).TextColor(t.Text)
+	content := ui.Column(c).Width(204 * scale).Padding(6).Gap(2)
 	// On macOS the window takes the mouse itself (native_darwin.go): drag
 	// anywhere to move the panel, right-click for its menu. Elsewhere the
 	// view does both.
@@ -115,13 +116,18 @@ func (a *App) panelView(c *ui.Context) {
 			}
 		}
 		if state.EmptyHint != "" {
-			ui.Text(c, state.EmptyHint).TextColor(t.TextMuted).Padding(2, 4)
+			flatText(c, state.EmptyHint, panelFont(12*scale, false), p.muted, false).Margin(2, 4)
+		}
+		// Notes wrap, which flatText does not: they are text of elements,
+		// smoothed, and rare.
+		note := func(s string, color ui.Color) {
+			ui.Text(c, s).FontSize(10*scale).FontWeight(500).LineHeight(lineHeight).TextColor(color).Padding(0, 4)
 		}
 		for _, outage := range state.Outages {
-			ui.Text(c, outage).FontSize(10*scale).TextColor(colors(t).orange).Padding(0, 4)
+			note(outage, p.orange)
 		}
 		if state.UpdateHint != "" {
-			ui.Text(c, state.UpdateHint).FontSize(10*scale).TextColor(t.TextMuted).Padding(0, 4)
+			note(state.UpdateHint, p.muted)
 		}
 	})
 
@@ -142,8 +148,9 @@ func (a *App) panelView(c *ui.Context) {
 // quoteRow builds one symbol's row. The name sits on the first line; the
 // extended-hours line hangs under the price column only.
 func (a *App) quoteRow(c *ui.Context, row Row, state PanelState, now time.Time) {
-	t := c.Theme()
+	p := colors(c.Theme())
 	scale := float32(state.Scale)
+	main, small := panelFont(12*scale, true), panelFont(10*scale, true)
 	q := row.Quote
 
 	el := ui.Row(c.Key(row.Symbol)).AlignItems(ui.Start).Gap(8).Padding(2, 4).Radius(4)
@@ -163,7 +170,7 @@ func (a *App) quoteRow(c *ui.Context, row Row, state PanelState, now time.Time) 
 				a.flashes[row.Symbol] = f
 			}
 			f.run++
-			f.color = tint(q.Price-old, state.UpColor, t, t.TextMuted)
+			f.color = tint(q.Price-old, state.UpColor, p, p.gray)
 		}
 	}
 	if f != nil {
@@ -177,30 +184,28 @@ func (a *App) quoteRow(c *ui.Context, row Row, state PanelState, now time.Time) 
 
 	el.Children(func() {
 		// The name is what gives way when the panel is tight; prices never wrap.
-		ui.Text(c, row.Label).SingleLine().Grow(1).MinWidth(0)
+		flatText(c, row.Label, panelFont(12*scale, false), p.text, false).Basis(0).Grow(1).MinWidth(0)
 		ui.Column(c).AlignItems(ui.End).Gap(1).Shrink(0).Children(func() {
-			ui.Row(c).Gap(8).FontFeatures("tnum").Children(func() {
+			ui.Row(c).Gap(8).Children(func() {
 				if q == nil {
-					ui.Text(c, "—")
-					ui.Text(c, "—").Width(56 * scale).TextAlign(ui.End)
+					flatText(c, "—", main, p.text, false)
+					flatText(c, "—", main, p.text, true).Width(56 * scale)
 					return
 				}
-				ui.Text(c, priceText(q.Price)).NoWrap()
-				ui.Text(c, percentText(q.ChangePercent)).NoWrap().Width(56 * scale).TextAlign(ui.End).
-					TextColor(tint(q.ChangePercent, state.UpColor, t, t.Text))
+				flatText(c, priceText(q.Price), main, p.text, false)
+				flatText(c, percentText(q.ChangePercent), main, tint(q.ChangePercent, state.UpColor, p, p.text), true).Width(56 * scale)
 			})
 			if q == nil || q.Extended == nil {
 				return
 			}
 			e := q.Extended
-			ui.Row(c).Gap(8).FontSize(10 * scale).TextColor(t.TextMuted).FontFeatures("tnum").Children(func() {
+			ui.Row(c).Gap(8).Children(func() {
 				// The icon hugs the price it labels: a label, not a third number.
 				ui.Row(c).Gap(3).AlignItems(ui.Center).Children(func() {
-					sessionIcon(c, e, 8.5*scale, t.TextMuted)
-					ui.Text(c, priceText(e.Price)).NoWrap()
+					sessionIcon(c, e, 10*scale, p.muted)
+					flatText(c, priceText(e.Price), small, p.muted, false)
 				})
-				ui.Text(c, percentText(e.ChangePercent)).NoWrap().Width(56 * scale).TextAlign(ui.End).
-					TextColor(tint(e.ChangePercent, state.UpColor, t, t.TextMuted))
+				flatText(c, percentText(e.ChangePercent), small, tint(e.ChangePercent, state.UpColor, p, p.muted), true).Width(56 * scale)
 			})
 		})
 	})
