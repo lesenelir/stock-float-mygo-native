@@ -1,58 +1,45 @@
+// StockFloat shows live prices and daily change for the stocks you follow,
+// in a small panel that floats above every app and never takes focus.
+//
+// Everything is Go: the settings, the quote feeds, the menus, the menu bar
+// icon, the shortcut and updates, and the panel and the settings window,
+// which show native UI that MyGo draws on the GPU (package ui), with no
+// web page and no webview.
 package main
 
 import (
-	"fmt"
+	_ "embed"
 	"log"
 
 	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/ui"
 )
 
-// app is the state the window shows. Its view builds the interface from
-// it, on the main thread, whenever the window needs a frame: after input,
-// after Window.Update, and while something animates.
-type app struct {
-	name  string
-	count int
-}
-
-func (a *app) view(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).Fill().Center().Gap(16).Padding(24).Children(func() {
-		ui.Text(c, "stock-float-mygo-native").FontSize(26).Bold()
-		ui.TextInput(c, &a.name).Placeholder("Your name").Label("Name").Width(240)
-		greeting := "Hello!"
-		if a.name != "" {
-			greeting = fmt.Sprintf("Hello, %s!", a.name)
-		}
-		ui.Text(c, greeting).TextColor(t.TextMuted)
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			if ui.Button(c, "−").Width(44).Clicked() {
-				a.count--
-			}
-			ui.Textf(c, "%d", a.count).FontSize(20).Width(48).TextAlign(ui.Center)
-			if ui.PrimaryButton(c, "+").Width(44).Clicked() {
-				a.count++
-			}
-		})
-	})
-}
+//go:embed assets/tray.png
+var trayIcon []byte
 
 func main() {
-	a := &app{}
-	mygo.App.WhenReady(func() {
-		mygo.NewWindow(mygo.WindowOptions{
-			Title:     "stock-float-mygo-native",
-			Width:     480,
-			Height:    360,
-			MinWidth:  320,
-			MinHeight: 280,
-			// Opens where the user left it last time.
-			StateKey: "main",
-			// The window shows the interface MyGo draws, not a web page.
-			Content: ui.View(a.view),
-		})
-	})
+	// Opening the app again, from Finder or Spotlight, shows the panel of the
+	// running one.
+	if !mygo.App.RequestSingleInstanceLock() {
+		return
+	}
+	app := newApp()
+	app.locale = mygo.App.Locale()
+
+	// The bundle is marked as a background app (LSUIElement in mygo.json),
+	// so that a user who turned the Dock icon off never sees it flash; the
+	// Dock icon comes back here when it is on.
+	mygo.App.SetActivationPolicy(activationPolicy(app.store.Config()))
+	// The panel only ever hides, but the settings window closes: keep running
+	// with no window open.
+	mygo.App.OnWindowAllClosed(func() {})
+	// Clicking the Dock icon, or opening the app again, brings a hidden
+	// panel back.
+	mygo.App.OnActivate(func(bool) { app.showPanel() })
+	mygo.App.OnSecondInstance(func([]string, string) { app.showPanel() })
+	mygo.App.OnQuit(app.store.Stop)
+
+	mygo.App.WhenReady(app.ready)
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}

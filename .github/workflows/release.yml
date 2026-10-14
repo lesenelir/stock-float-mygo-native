@@ -1,0 +1,53 @@
+name: Release
+
+# A pushed version tag builds the universal macOS app and attaches it to a draft
+# release, which you review and publish. A manual run is a dry run: it keeps the
+# build as a workflow artifact.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Signing and disk images need macOS.
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+
+      - name: Check the version
+        if: github.event_name == 'push'
+        run: test "$GITHUB_REF_NAME" = "v$(jq -r .version mygo.json)"
+
+      # With `updates` in mygo.json and the key in the secret, the build also
+      # writes the signed update archive and manifest the app checks.
+      - name: Build
+        env:
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go tool mygo build -platform darwin/universal
+
+      - name: Keep the build (dry run)
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: StockFloat-Native
+          path: build/darwin-universal/*.dmg
+
+      - name: Upload to a draft release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "StockFloat Native ${GITHUB_REF_NAME#v}" --generate-notes
+          cd build/darwin-universal
+          # The disk image, and with updates set up, the update archive, deltas and manifest.
+          gh release upload "$GITHUB_REF_NAME" --clobber *.dmg $(ls *.tar.gz *.delta update-*.json 2>/dev/null)

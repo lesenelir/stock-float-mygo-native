@@ -1,6 +1,17 @@
 {
-  "name": "stock-float-mygo-native",
-  "identifier": "com.example.stockfloatmygonative",
+  "name": "StockFloat Native",
+  "identifier": "com.lesenelir.stockfloat.native",
   "version": "0.1.0",
-  "out": "build"
+  "copyright": "© 2026 lesenelir",
+  "out": "build",
+  "macos": {
+    "infoPlist": {
+      "LSUIElement": true,
+      "LSApplicationCategoryType": "public.app-category.finance"
+    }
+  },
+  "updates": {
+    "publicKey": "I+szEb9EdhwO0HqROd6o2wTSQhHdNESL9GbrnS5v7do=",
+    "github": "lesenelir/stock-float-mygo-native"
+  }
 }
