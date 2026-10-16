@@ -25,6 +25,7 @@ Right-click the panel, or click the line-chart icon in the menu bar, for the men
 - **Click-through** lets clicks pass through the panel; hold ⌥ to interact with it again.
 - **Show in Dock** turns the Dock icon off or on; the menu bar icon stays either way.
 - **Launch at login**
+- **Check for Updates…** checks for a new version now, instead of waiting for the daily check, and offers to install it. The app updates itself in place; only the releases from GitHub can.
 
 Drag the panel to move it; the position is remembered. A row fades when its price has not updated for 30 minutes.
 

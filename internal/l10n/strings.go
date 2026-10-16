@@ -76,6 +76,25 @@ func (s Strings) UpdateHint(version string) string {
 func (s Strings) UpdateTo(version string) string {
 	return s.t("更新到 "+version, "Update to "+version)
 }
+func (s Strings) CheckForUpdates() string { return s.t("检查更新…", "Check for Updates…") }
+func (s Strings) CheckingForUpdates() string {
+	return s.t("正在检查更新…", "Checking for Updates…")
+}
+func (s Strings) UpdatesUnavailable() string {
+	return s.t("仅从 GitHub 下载的正式版本可以检查更新", "Only the releases from GitHub can check for updates")
+}
+func (s Strings) UpToDate() string { return s.t("已是最新版本", "You're Up to Date") }
+func (s Strings) UpdateCheckFailed() string {
+	return s.t("无法检查更新", "Couldn't Check for Updates")
+}
+func (s Strings) UpdateAvailable(version string) string {
+	return s.t("新版本 "+version+" 可用", "Version "+version+" Is Available")
+}
+func (s Strings) CurrentVersion(version string) string {
+	return s.t("当前版本 "+version, "This is version "+version+".")
+}
+func (s Strings) UpdateNow() string        { return s.t("立即更新", "Update Now") }
+func (s Strings) Later() string            { return s.t("稍后", "Later") }
 func (s Strings) Updating() string         { return s.t("正在下载更新…", "Downloading Update…") }
 func (s Strings) UpdateFailed() string     { return s.t("更新失败", "Update Failed") }
 func (s Strings) OpenDownloadPage() string { return s.t("打开下载页面", "Open Download Page") }

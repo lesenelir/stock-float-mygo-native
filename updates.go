@@ -20,6 +20,8 @@ type updates struct {
 	mu         sync.Mutex
 	available  *mygo.Update
 	installing bool
+	// checking is set while a check the user asked for runs.
+	checking bool
 }
 
 // status returns the version on offer, if any, and whether it is being
@@ -60,19 +62,70 @@ func (a *App) startUpdates() {
 }
 
 func (a *App) checkForUpdate() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	up, err := mygo.Updater.Check(ctx)
+	up, err := a.fetchUpdate()
 	if err != nil || up == nil {
 		// A failed check is not worth reporting; the next one tries again.
 		return
 	}
+	a.offerUpdate(up)
+}
+
+// fetchUpdate asks the release feed for a version newer than this one.
+func (a *App) fetchUpdate() (*mygo.Update, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	return mygo.Updater.Check(ctx)
+}
+
+// offerUpdate shows up on the panel and in the menu.
+func (a *App) offerUpdate(up *mygo.Update) {
 	a.updates.mu.Lock()
 	if !a.updates.installing {
 		a.updates.available = up
 	}
 	a.updates.mu.Unlock()
 	a.redraw()
+}
+
+// checkNow checks for an update because the user asked, and says what it
+// found: a version to install now, that the app is up to date, or why it
+// could not tell. The daily check stays quiet about all three.
+func (a *App) checkNow() {
+	a.updates.mu.Lock()
+	if a.updates.checking || a.updates.installing {
+		a.updates.mu.Unlock()
+		return
+	}
+	a.updates.checking = true
+	a.updates.mu.Unlock()
+	up, err := a.fetchUpdate()
+	a.updates.mu.Lock()
+	a.updates.checking = false
+	a.updates.mu.Unlock()
+
+	s := a.strings()
+	mygo.App.Focus()
+	switch {
+	case err != nil:
+		_, _ = mygo.Dialog.Message(mygo.MessageOptions{
+			Type: mygo.MessageWarning, Message: s.UpdateCheckFailed(), Detail: err.Error(),
+		})
+	case up == nil:
+		_, _ = mygo.Dialog.Message(mygo.MessageOptions{
+			Type: mygo.MessageInfo, Message: s.UpToDate(), Detail: s.CurrentVersion(mygo.App.Version()),
+		})
+	default:
+		a.offerUpdate(up)
+		res, derr := mygo.Dialog.Message(mygo.MessageOptions{
+			Type:    mygo.MessageInfo,
+			Message: s.UpdateAvailable(up.Version),
+			Detail:  s.CurrentVersion(mygo.App.Version()),
+			Buttons: []string{s.UpdateNow(), s.Later()},
+		})
+		if derr == nil && res.Button == 0 {
+			a.installUpdate()
+		}
+	}
 }
 
 // installUpdate downloads the update on offer, checks its signature,

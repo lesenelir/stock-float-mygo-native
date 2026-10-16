@@ -10,7 +10,8 @@ import (
 // menu is the one menu behind the panel's right-click and the menu bar
 // icon, built each time it opens so that its check marks are current.
 // Grouped by kind: a pending update, the everyday actions, the two
-// submenus, then the three behavior toggles by how often they change.
+// submenus, the three behavior toggles by how often they change, then
+// checking for updates and quitting.
 func (a *App) menu() *mygo.Menu {
 	s := a.strings()
 	cfg := a.store.Config()
@@ -35,6 +36,7 @@ func (a *App) menu() *mygo.Menu {
 		toggle(s.DockIcon(), cfg.DockIcon, func() { a.change(func(c *config.Config) { c.DockIcon = !c.DockIcon }) }),
 		a.loginItem(s),
 		mygo.Separator(),
+		a.checkItem(s),
 		&mygo.MenuItem{Label: s.Quit(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 	)
 	return mygo.NewMenu(items)
@@ -89,6 +91,22 @@ func (a *App) languageMenu(s l10n.Strings, cfg config.Config) []*mygo.MenuItem {
 	return items
 }
 
+// checkItem checks for updates now. Only the releases from GitHub can
+// update themselves: development builds and builds without the update key
+// cannot.
+func (a *App) checkItem(s l10n.Strings) *mygo.MenuItem {
+	if !mygo.Updater.Enabled() {
+		return &mygo.MenuItem{Label: s.CheckForUpdates(), Disabled: true, ToolTip: s.UpdatesUnavailable()}
+	}
+	a.updates.mu.Lock()
+	checking := a.updates.checking
+	a.updates.mu.Unlock()
+	if checking {
+		return &mygo.MenuItem{Label: s.CheckingForUpdates(), Disabled: true}
+	}
+	return &mygo.MenuItem{Label: s.CheckForUpdates(), Click: func(*mygo.MenuItem, *mygo.Window) { go a.checkNow() }}
+}
+
 // loginItem turns starting at login on or off. macOS keeps the setting, so
 // it is read from the system each time; it needs the packaged app.
 func (a *App) loginItem(s l10n.Strings) *mygo.MenuItem {
@@ -113,6 +131,7 @@ func (a *App) mainMenu() *mygo.Menu {
 			{Label: s.Settings(), Accelerator: "Cmd+,", Click: func(*mygo.MenuItem, *mygo.Window) { a.openSettings() }},
 			{Label: s.PriceAlerts(), Click: func(*mygo.MenuItem, *mygo.Window) { a.openAlerts() }},
 			{Label: s.ShowPanel(), Click: func(*mygo.MenuItem, *mygo.Window) { a.showPanel() }},
+			a.checkItem(s),
 			mygo.Separator(),
 			{Label: s.QuitApp(), Accelerator: "Cmd+Q", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 		}},
