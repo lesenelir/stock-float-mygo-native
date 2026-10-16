@@ -25,13 +25,20 @@ type settingsForm struct {
 	finnhubKey string
 	// invalid says which symbols could not be read, after Save.
 	invalid string
-	// sized is the content size the window was last given.
+	// sized is the content size the window was last given; zero until the
+	// first.
 	sized [2]int
+	// fitted is whether the window has its first size, and shown whether
+	// the view has revealed it since.
+	fitted, shown bool
 }
 
 // openSettings opens the settings window, in front of the other apps,
 // starting from the saved settings. A window of native UI draws no frames
-// while hidden, so it shows at once, and its view fits it to the form.
+// while hidden, so it shows at once, but transparent: its view fits it to
+// the form, and reveals it with the first frame drawn at that size. Shown
+// opaque at a guessed size, it would jump to the form's size a few frames
+// later, the layer stretching the last frame to the new size meanwhile.
 func (a *App) openSettings() {
 	mygo.RunOnMain(func() {
 		if a.settings != nil {
@@ -61,7 +68,7 @@ func (a *App) openSettings() {
 			DisableFullScreen: true,
 			Content:           ui.View(f.view),
 		})
-		f.win.Center()
+		f.win.SetOpacity(0)
 		mygo.App.Focus()
 		f.win.Show()
 		a.settings = f
@@ -110,10 +117,24 @@ func (f *settingsForm) view(c *ui.Context) {
 	if b := form.Bounds(); f.win == nil {
 		return // a test's view, without a window
 	} else if b.W > 0 && b.H > 0 {
+		if f.fitted && !f.shown {
+			// This frame is the first drawn at the window's size; the
+			// window shows once it is.
+			f.shown = true
+			go mygo.RunOnMain(func() { f.win.SetOpacity(1) })
+		}
 		size := [2]int{int(math.Ceil(float64(b.W))), int(math.Ceil(float64(b.H)))}
 		if size != f.sized {
+			first := f.sized == [2]int{}
 			f.sized = size
-			go mygo.RunOnMain(func() { f.win.SetContentSize(size[0], size[1]) })
+			go mygo.RunOnMain(func() {
+				f.win.SetContentSize(size[0], size[1])
+				if first {
+					f.win.Center()
+					f.fitted = true
+					f.win.Invalidate()
+				}
+			})
 		}
 	} else {
 		c.Invalidate()
