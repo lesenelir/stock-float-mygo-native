@@ -28,6 +28,9 @@ type App struct {
 
 	placement        panelPlacement // main thread
 	clickThroughStop chan struct{}  // main thread
+	// quitting is set as a quit starts, when the panel may close. Main
+	// thread.
+	quitting bool
 
 	// The panel's view keeps these from frame to frame. Main thread.
 	lastPrices map[string]float64

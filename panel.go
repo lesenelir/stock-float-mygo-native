@@ -59,8 +59,13 @@ func (a *App) createPanel(cfg config.Config) {
 	win.SetBounds(mygo.Rectangle{X: at.X, Y: at.Y, Width: width, Height: height})
 	a.showPanel()
 
-	// The panel hides rather than closes, should anything ask it to.
+	// The panel hides rather than closes, should anything but quitting ask it
+	// to: Quit closes every window first, and a window that stays open
+	// cancels it.
 	win.OnClose(func(e *mygo.CloseEvent) {
+		if a.quitting {
+			return
+		}
 		e.PreventDefault()
 		a.hidePanel()
 	})

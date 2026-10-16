@@ -37,6 +37,9 @@ func main() {
 	// panel back.
 	mygo.App.OnActivate(func(bool) { app.showPanel() })
 	mygo.App.OnSecondInstance(func([]string, string) { app.showPanel() })
+	// Lets the panel close, which it otherwise refuses, so that quitting from
+	// the menu, ⌘Q or a signal is not called off.
+	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { app.quitting = true })
 	mygo.App.OnQuit(app.store.Stop)
 
 	mygo.App.WhenReady(app.ready)
