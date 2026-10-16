@@ -22,6 +22,7 @@ type App struct {
 
 	panel    *mygo.Window  // main thread, after WhenReady
 	settings *settingsForm // main thread; nil while closed
+	alerts   *alertsForm   // main thread; nil while closed
 	tray     *mygo.Tray    // main thread
 	hotkey   string        // main thread; the registered accelerator, or ""
 
@@ -32,8 +33,13 @@ type App struct {
 	lastPrices map[string]float64
 	flashes    map[string]*flash
 
-	// panelWindow is panel for goroutines, which ask it to redraw.
-	panelWindow atomic.Pointer[mygo.Window]
+	// panelWindow is panel, and alertsWindow the alerts window while open,
+	// for goroutines, which ask them to redraw.
+	panelWindow  atomic.Pointer[mygo.Window]
+	alertsWindow atomic.Pointer[mygo.Window]
+	// notificationsDenied is set once the user has been told that alerts
+	// cannot notify them.
+	notificationsDenied atomic.Bool
 
 	updates updates
 }
@@ -41,6 +47,7 @@ type App struct {
 func newApp() *App {
 	a := &App{lastPrices: map[string]float64{}, flashes: map[string]*flash{}}
 	a.store = NewStore(config.Path(), a.redraw)
+	a.store.OnAlert(a.notifyAlerts)
 	return a
 }
 
@@ -54,10 +61,13 @@ func (a *App) state() PanelState {
 	return panelState(a.store.Snapshot(), a.strings(), a.updates.offered())
 }
 
-// redraw asks the panel for a frame, which builds it from the store anew.
-// Any goroutine.
+// redraw asks the panel, and the alerts window, for a frame, which builds
+// them from the store anew. Any goroutine.
 func (a *App) redraw() {
 	if win := a.panelWindow.Load(); win != nil {
+		win.Invalidate()
+	}
+	if win := a.alertsWindow.Load(); win != nil {
 		win.Invalidate()
 	}
 }
@@ -132,6 +142,9 @@ func (a *App) change(fn func(*config.Config)) {
 			mygo.App.Dock.SetMenu(a.dockMenu())
 			if a.settings != nil {
 				a.settings.win.Close()
+			}
+			if a.alerts != nil {
+				a.alerts.win.Close()
 			}
 		}
 	})

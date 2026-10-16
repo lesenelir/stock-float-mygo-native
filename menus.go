@@ -9,7 +9,7 @@ import (
 
 // menu is the one menu behind the panel's right-click and the menu bar
 // icon, built each time it opens so that its check marks are current.
-// Grouped by kind: a pending update, the two everyday actions, the two
+// Grouped by kind: a pending update, the everyday actions, the two
 // submenus, then the three behavior toggles by how often they change.
 func (a *App) menu() *mygo.Menu {
 	s := a.strings()
@@ -25,6 +25,7 @@ func (a *App) menu() *mygo.Menu {
 
 	items = append(items,
 		&mygo.MenuItem{Label: s.Settings(), Click: func(*mygo.MenuItem, *mygo.Window) { a.openSettings() }},
+		&mygo.MenuItem{Label: s.PriceAlerts(), Click: func(*mygo.MenuItem, *mygo.Window) { a.openAlerts() }},
 		a.panelItem(s),
 		mygo.Separator(),
 		&mygo.MenuItem{Label: s.Appearance(), Submenu: a.appearanceMenu(s, cfg)},
@@ -110,6 +111,7 @@ func (a *App) mainMenu() *mygo.Menu {
 	return mygo.NewMenu([]*mygo.MenuItem{
 		{Label: "StockFloat", Submenu: []*mygo.MenuItem{
 			{Label: s.Settings(), Accelerator: "Cmd+,", Click: func(*mygo.MenuItem, *mygo.Window) { a.openSettings() }},
+			{Label: s.PriceAlerts(), Click: func(*mygo.MenuItem, *mygo.Window) { a.openAlerts() }},
 			{Label: s.ShowPanel(), Click: func(*mygo.MenuItem, *mygo.Window) { a.showPanel() }},
 			mygo.Separator(),
 			{Label: s.QuitApp(), Accelerator: "Cmd+Q", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
@@ -128,11 +130,13 @@ func (a *App) mainMenu() *mygo.Menu {
 	})
 }
 
-// dockMenu adds Settings and Show or Hide Panel to the Dock icon's menu.
+// dockMenu adds Settings, Price Alerts and Show or Hide Panel to the Dock
+// icon's menu.
 func (a *App) dockMenu() *mygo.Menu {
 	s := a.strings()
 	return mygo.NewMenu([]*mygo.MenuItem{
 		{Label: s.Settings(), Click: func(*mygo.MenuItem, *mygo.Window) { a.openSettings() }},
+		{Label: s.PriceAlerts(), Click: func(*mygo.MenuItem, *mygo.Window) { a.openAlerts() }},
 		a.panelItem(s),
 	})
 }

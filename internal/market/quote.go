@@ -25,6 +25,15 @@ type Quote struct {
 // ChangePercent is the change against the previous close, in percent.
 func (q Quote) ChangePercent() float64 { return percentChange(q.Price, q.PrevClose) }
 
+// Latest is the newest price: the extended session's while it trades,
+// the regular one's otherwise.
+func (q Quote) Latest() float64 {
+	if q.Extended != nil {
+		return q.Extended.Price
+	}
+	return q.Price
+}
+
 // IsStale reports whether the price is old enough to be misleading; unknown
 // times are not treated as stale.
 func (q Quote) IsStale(now time.Time) bool {

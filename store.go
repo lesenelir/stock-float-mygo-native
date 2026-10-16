@@ -31,6 +31,9 @@ type Store struct {
 
 	changed func()
 	pending bool
+	// alerted is told of the alerts a quote set off, which the store has
+	// removed from the settings. Nil drops them quietly.
+	alerted func(market.Quote, []config.Alert)
 }
 
 // NewStore reads the settings at path. changed is called, from a goroutine
@@ -44,6 +47,14 @@ func NewStore(path string, changed func()) *Store {
 		outages: map[feed.Source]feed.Outage{},
 		changed: changed,
 	}
+}
+
+// OnAlert sets what is told of the alerts that quotes set off. It is
+// called from a feed's goroutine.
+func (s *Store) OnAlert(fn func(market.Quote, []config.Alert)) {
+	s.mu.Lock()
+	s.alerted = fn
+	s.mu.Unlock()
 }
 
 // Snapshot is the store's state at one moment.
@@ -127,16 +138,45 @@ func (s *Store) apply(generation int, source feed.Source, e feed.Event) {
 		s.mu.Unlock()
 		return
 	}
+	var hits []config.Alert
 	switch {
 	case e.Quote != nil:
 		s.quotes[e.Quote.Symbol] = *e.Quote
+		hits = s.takeAlertsLocked(*e.Quote)
 	case e.Online:
 		delete(s.outages, source)
 	case e.Offline != nil:
 		s.outages[source] = *e.Offline
 	}
+	alerted := s.alerted
 	s.mu.Unlock()
+	if len(hits) > 0 && alerted != nil {
+		alerted(*e.Quote, hits)
+	}
 	s.notify()
+}
+
+// takeAlertsLocked removes and returns the alerts that q sets off, saving
+// the settings without them: each alert goes off once.
+func (s *Store) takeAlertsLocked(q market.Quote) []config.Alert {
+	var hits []config.Alert
+	price := q.Latest()
+	kept := s.cfg.Alerts[:0:0]
+	for _, a := range s.cfg.Alerts {
+		if a.Symbol == q.Symbol && a.Reached(price) {
+			hits = append(hits, a)
+		} else {
+			kept = append(kept, a)
+		}
+	}
+	if len(hits) == 0 {
+		return nil
+	}
+	s.cfg.Alerts = kept
+	if err := s.cfg.Save(s.path); err != nil {
+		log.Printf("saving %s: %v", s.path, err)
+	}
+	return hits
 }
 
 // Update applies and saves a change of settings, restarting the feeds when

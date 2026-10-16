@@ -18,6 +18,7 @@ It reads and writes the same settings as the other versions, `~/.config/stock-fl
 Right-click the panel, or click the line-chart icon in the menu bar, for the menu:
 
 - **Settings…** edits the watch list and data sources.
+- **Price Alerts…** sets an alert on a symbol of the watch list: when its price rises or falls to the target, a macOS notification says so, once, and the alert goes away. Pre-market, post-market and overnight prices count too.
 - **Hide Panel** / **Show Panel**. Press **⌃⌥S** in any app to do the same; clicking the Dock icon or opening the app again also brings a hidden panel back.
 - **Appearance** sets the colors (green up, red up, or no color), the text size and the opacity.
 - **Language** switches between System, 中文 and English.

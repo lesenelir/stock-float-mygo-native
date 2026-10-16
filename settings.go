@@ -133,6 +133,7 @@ func (f *settingsForm) save() {
 		c.Symbols = ids
 		c.Longbridge = f.longbridge
 		c.FinnhubKey = strings.TrimSpace(f.finnhubKey)
+		c.DropOrphanAlerts()
 	})
 	f.close()
 }

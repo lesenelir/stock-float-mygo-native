@@ -48,3 +48,37 @@ func TestStoreUpdateSavesTheSettings(t *testing.T) {
 		t.Error("changing colors started the feeds")
 	}
 }
+
+func TestStoreSetsOffEachAlertOnce(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	s := NewStore(path, nil)
+	s.Update(func(c *config.Config) {
+		c.Alerts = []config.Alert{
+			{Symbol: "usAAPL", Price: 200},
+			{Symbol: "usAAPL", Price: 150, Below: true},
+			{Symbol: "usNVDA", Price: 200},
+		}
+	})
+	var got []config.Alert
+	s.OnAlert(func(_ market.Quote, hits []config.Alert) { got = append(got, hits...) })
+
+	s.apply(s.generation, feed.Tencent, feed.QuoteEvent(market.Quote{Symbol: "usAAPL", Price: 190, PrevClose: 180}))
+	if len(got) != 0 {
+		t.Fatalf("set off below the price: %+v", got)
+	}
+	// An extended-hours price counts: it is the newest.
+	s.apply(s.generation, feed.Longbridge, feed.QuoteEvent(market.Quote{Symbol: "usAAPL", Price: 190, PrevClose: 180,
+		Extended: &market.Extended{Session: market.Post, Price: 201, PrevClose: 190}}))
+	s.apply(s.generation, feed.Longbridge, feed.QuoteEvent(market.Quote{Symbol: "usAAPL", Price: 205, PrevClose: 180}))
+
+	if want := []config.Alert{{Symbol: "usAAPL", Price: 200}}; !slices.Equal(got, want) {
+		t.Errorf("set off %+v, want %+v", got, want)
+	}
+	want := []config.Alert{{Symbol: "usAAPL", Price: 150, Below: true}, {Symbol: "usNVDA", Price: 200}}
+	if left := s.Config().Alerts; !slices.Equal(left, want) {
+		t.Errorf("left %+v", left)
+	}
+	if saved := config.Load(path).Alerts; !slices.Equal(saved, want) {
+		t.Errorf("saved %+v", saved)
+	}
+}

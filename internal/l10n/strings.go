@@ -169,5 +169,65 @@ func (s Strings) Unrecognized(entries []string) string {
 	return s.t("无法识别："+strings.Join(entries, "、"), "Not recognized: "+strings.Join(entries, ", "))
 }
 
+// Price alerts
+
+func (s Strings) PriceAlerts() string    { return s.t("到价提醒…", "Price Alerts…") }
+func (s Strings) AlertsTitle() string    { return s.t("到价提醒", "Price Alerts") }
+func (s Strings) AlertSymbol() string    { return s.t("标的", "Symbol") }
+func (s Strings) AlertPrice() string     { return s.t("目标价", "Target price") }
+func (s Strings) AlertDirection() string { return s.t("方向", "Direction") }
+func (s Strings) AlertRises() string     { return s.t("涨到", "Rises to") }
+func (s Strings) AlertFalls() string     { return s.t("跌到", "Falls to") }
+func (s Strings) AddAlert() string       { return s.t("添加", "Add") }
+func (s Strings) RemoveAlert() string    { return s.t("删除", "Remove") }
+func (s Strings) Done() string           { return s.t("完成", "Done") }
+func (s Strings) InvalidPrice() string {
+	return s.t("请输入大于 0 的价格", "Enter a price above 0.")
+}
+func (s Strings) AlertsNeedSymbols() string {
+	return s.t("请先在设置中添加标的", "Add symbols in Settings first.")
+}
+func (s Strings) NoAlerts() string {
+	return s.t("暂无提醒。到价时会在系统通知中提醒一次。", "No alerts. Each one notifies you once, in Notification Center.")
+}
+
+// LastPrice says the latest price of the symbol an alert is being set for.
+func (s Strings) LastPrice(price string) string { return s.t("现价 "+price, "Last "+price) }
+
+// AlertCondition says when an alert goes off, such as "Rises to 200.00".
+func (s Strings) AlertCondition(below bool, price string) string {
+	if below {
+		return s.AlertFalls() + " " + price
+	}
+	return s.AlertRises() + " " + price
+}
+
+// AlertTitle is the notification of an alert going off, such as "AAPL rose
+// to 200.00".
+func (s Strings) AlertTitle(label string, below bool, price string) string {
+	if below {
+		return s.t(label+" 跌到 "+price, label+" fell to "+price)
+	}
+	return s.t(label+" 涨到 "+price, label+" rose to "+price)
+}
+
+// AlertBody gives the price that set an alert off and its change, such as
+// "Now 201.30 (+2.15%)"; session names the extended session it traded in,
+// or is empty.
+func (s Strings) AlertBody(session, price, change string) string {
+	if session == "" {
+		session = s.t("现价", "Now")
+	}
+	return s.t(session+" "+price+"（"+change+"）", session+" "+price+" ("+change+")")
+}
+
+func (s Strings) NotificationsOff() string {
+	return s.t("到价提醒无法通知", "Price Alerts Can't Notify You")
+}
+func (s Strings) NotificationsOffDetail() string {
+	return s.t("请在“系统设置 › 通知”中允许 StockFloat Native 发送通知。",
+		"Allow StockFloat Native to send notifications in System Settings › Notifications.")
+}
+
 // Percent writes an opacity choice, such as 85%.
 func Percent(v float64) string { return fmt.Sprintf("%d%%", int(v*100+0.5)) }

@@ -89,3 +89,36 @@ func TestFirstLoadWritesTheDefaults(t *testing.T) {
 		t.Errorf("after writing, got %+v", got)
 	}
 }
+
+func TestAlertsGoOffAtTheirPriceOrBeyond(t *testing.T) {
+	rise, fall := Alert{Price: 200}, Alert{Price: 200, Below: true}
+	for _, tc := range []struct {
+		price      float64
+		rise, fall bool
+	}{
+		{199.99, false, true},
+		{200, true, true},
+		{200.01, true, false},
+		{0, false, false}, // no price
+	} {
+		if got := rise.Reached(tc.price); got != tc.rise {
+			t.Errorf("rises to 200, at %v: %v", tc.price, got)
+		}
+		if got := fall.Reached(tc.price); got != tc.fall {
+			t.Errorf("falls to 200, at %v: %v", tc.price, got)
+		}
+	}
+}
+
+func TestAlertsKeepOnlyWatchedSymbolsAndPrices(t *testing.T) {
+	c, err := Decode([]byte(`{"symbols":["usAAPL"],"alerts":[
+		{"symbol":"usAAPL","price":200},
+		{"symbol":"usAAPL","price":0},
+		{"symbol":"usNVDA","price":100,"below":true}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []Alert{{Symbol: "usAAPL", Price: 200}}; !slices.Equal(c.Alerts, want) {
+		t.Errorf("alerts = %+v", c.Alerts)
+	}
+}

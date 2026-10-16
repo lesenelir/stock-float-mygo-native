@@ -87,6 +87,30 @@ type Config struct {
 	// DockIcon shows the app in the Dock and the Command-Tab switcher; the
 	// menu bar icon is always there.
 	DockIcon bool `json:"dockIcon"`
+	// Alerts are the price alerts waiting to go off, for symbols of the
+	// watch list.
+	Alerts []Alert `json:"alerts,omitempty"`
+}
+
+// Alert notifies once when a symbol's price reaches Price, then goes away.
+type Alert struct {
+	// Symbol is a market.Symbol ID.
+	Symbol string  `json:"symbol"`
+	Price  float64 `json:"price"`
+	// Below waits for the price to fall to Price; otherwise for it to rise
+	// to it.
+	Below bool `json:"below"`
+}
+
+// Reached reports whether price sets the alert off. Zero is no price.
+func (a Alert) Reached(price float64) bool {
+	if price <= 0 {
+		return false
+	}
+	if a.Below {
+		return price <= a.Price
+	}
+	return price >= a.Price
 }
 
 // Default returns the settings of a first launch.
@@ -112,6 +136,8 @@ func Decode(data []byte) (Config, error) {
 	}
 	d := Default()
 	c.Symbols, _ = ParseSymbols(c.Symbols)
+	c.Alerts = slices.DeleteFunc(c.Alerts, func(a Alert) bool { return a.Price <= 0 })
+	c.DropOrphanAlerts()
 	c.PollSeconds = max(1, c.PollSeconds)
 	c.Opacity = min(1, max(0.3, c.Opacity))
 	if !slices.Contains(UpColors, c.UpColor) {
@@ -201,8 +227,15 @@ func (c Config) FeedsChanged(next Config) bool {
 		c.PollSeconds != next.PollSeconds
 }
 
+// DropOrphanAlerts removes the alerts of symbols no longer watched, which
+// no feed would set off.
+func (c *Config) DropOrphanAlerts() {
+	c.Alerts = slices.DeleteFunc(c.Alerts, func(a Alert) bool { return !slices.Contains(c.Symbols, a.Symbol) })
+}
+
 // Clone returns a copy that shares no slices with c.
 func (c Config) Clone() Config {
 	c.Symbols = slices.Clone(c.Symbols)
+	c.Alerts = slices.Clone(c.Alerts)
 	return c
 }

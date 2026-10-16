@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -85,5 +86,56 @@ func TestSettingsSayWhichSymbolsAreNotRecognized(t *testing.T) {
 	// Nothing was saved.
 	if got := f.app.store.Config().Symbols; len(got) != 3 {
 		t.Errorf("symbols saved: %q", got)
+	}
+}
+
+func TestAlertsWindowSetsAnAlertOnTheChosenSymbol(t *testing.T) {
+	a := testApp(t, func(c *config.Config) { c.Symbols = []string{"usAAPL", "hk00700"} })
+	a.store.apply(a.store.generation, feed.Tencent, feed.QuoteEvent(market.Quote{Symbol: "usAAPL", Price: 190, PrevClose: 180}))
+	f := &alertsForm{app: a, s: l10n.For(config.LanguageEn, "")}
+	tt := ui.NewTester(f.view, 360, 400)
+
+	if !tt.HasText("Last 190.00") || !tt.HasText("No alerts. Each one notifies you once, in Notification Center.") {
+		t.Errorf("texts %q", tt.Texts())
+	}
+
+	// A target under the last price waits for a fall.
+	f.price = "180.5"
+	f.guessDirection(a.store.Snapshot())
+	if err := tt.Click("Add"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+
+	want := []config.Alert{{Symbol: "usAAPL", Price: 180.5, Below: true}}
+	if got := a.store.Config().Alerts; !slices.Equal(got, want) {
+		t.Errorf("alerts %+v, want %+v", got, want)
+	}
+	if !tt.HasText("Falls to 180.50") {
+		t.Errorf("texts %q", tt.Texts())
+	}
+
+	if err := tt.Click("Remove"); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.store.Config().Alerts; len(got) != 0 {
+		t.Errorf("alerts left %+v", got)
+	}
+}
+
+func TestAlertsWindowRefusesAPriceItCannotRead(t *testing.T) {
+	f := &alertsForm{app: testApp(t, nil), s: l10n.For(config.LanguageEn, ""), price: "abc"}
+	tt := ui.NewTester(f.view, 360, 400)
+
+	if err := tt.Click("Add"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+
+	if !tt.HasText("Enter a price above 0.") {
+		t.Errorf("texts %q", tt.Texts())
+	}
+	if got := f.app.store.Config().Alerts; len(got) != 0 {
+		t.Errorf("alerts %+v", got)
 	}
 }
