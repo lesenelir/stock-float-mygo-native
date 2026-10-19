@@ -47,16 +47,45 @@ type flash struct {
 
 // palette is the panel's colors, the web version's: macOS's label colors
 // for text, and its system green, red and orange, brighter in the dark.
+// The green and red can be Tailwind CSS's instead, the same in both.
 type palette struct{ text, muted, green, red, gray, orange ui.Color }
 
-func colors(t *ui.Theme) palette {
+func colors(t *ui.Theme, state PanelState) palette {
+	var p palette
 	if t.Dark {
-		return palette{ui.RGBA(255, 255, 255, 0.9), ui.RGBA(255, 255, 255, 0.55),
+		p = palette{ui.RGBA(255, 255, 255, 0.9), ui.RGBA(255, 255, 255, 0.55),
 			ui.Hex("#30d158"), ui.Hex("#ff453a"), ui.Hex("#98989d"), ui.Hex("#ff9f0a")}
+	} else {
+		p = palette{ui.RGBA(0, 0, 0, 0.85), ui.RGBA(0, 0, 0, 0.5),
+			ui.Hex("#34c759"), ui.Hex("#ff3b30"), ui.Hex("#8e8e93"), ui.Hex("#ff9500")}
 	}
-	return palette{ui.RGBA(0, 0, 0, 0.85), ui.RGBA(0, 0, 0, 0.5),
-		ui.Hex("#34c759"), ui.Hex("#ff3b30"), ui.Hex("#8e8e93"), ui.Hex("#ff9500")}
+	if c, ok := tailwindGreens[state.GreenShade]; ok {
+		p.green = c
+	}
+	if c, ok := tailwindReds[state.RedShade]; ok {
+		p.red = c
+	}
+	return p
 }
+
+// tailwindGreens and tailwindReds are the shades of Tailwind CSS v4's
+// default palette the menu offers, as its oklch values.
+var (
+	tailwindGreens = map[config.Shade]ui.Color{
+		"300": ui.Oklch(0.871, 0.15, 154.449),
+		"400": ui.Oklch(0.792, 0.209, 151.711),
+		"500": ui.Oklch(0.723, 0.219, 149.579),
+		"600": ui.Oklch(0.627, 0.194, 149.214),
+		"700": ui.Oklch(0.527, 0.154, 150.069),
+	}
+	tailwindReds = map[config.Shade]ui.Color{
+		"300": ui.Oklch(0.808, 0.114, 19.571),
+		"400": ui.Oklch(0.704, 0.191, 22.216),
+		"500": ui.Oklch(0.637, 0.237, 25.331),
+		"600": ui.Oklch(0.577, 0.245, 27.325),
+		"700": ui.Oklch(0.505, 0.213, 27.518),
+	}
+)
 
 // tint is the color of a change: green or red as the user chose, muted for
 // none, and plain, which keeps the text's color, in the no-color scheme.
@@ -88,12 +117,12 @@ func percentText(percent float64) string { return fmt.Sprintf("%+.2f%%", percent
 // every frame; the store asks for one when a quote arrives. Its sizes are
 // the web version's CSS, in DIPs.
 func (a *App) panelView(c *ui.Context) {
-	p := colors(c.Theme())
+	state := a.state()
+	p := colors(c.Theme(), state)
 	// The HUD material behind the window shows where the view draws nothing.
 	if c.Vibrancy() {
 		c.Root().Background(ui.Transparent)
 	}
-	state := a.state()
 	scale := float32(state.Scale)
 	now := c.Now()
 	var nextStale time.Time
@@ -148,7 +177,7 @@ func (a *App) panelView(c *ui.Context) {
 // quoteRow builds one symbol's row. The name sits on the first line; the
 // extended-hours line hangs under the price column only.
 func (a *App) quoteRow(c *ui.Context, row Row, state PanelState, now time.Time) {
-	p := colors(c.Theme())
+	p := colors(c.Theme(), state)
 	scale := float32(state.Scale)
 	main, small := panelFont(12*scale, true), panelFont(10*scale, true)
 	q := row.Quote

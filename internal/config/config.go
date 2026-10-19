@@ -25,6 +25,16 @@ const (
 // UpColors lists the choices in menu order.
 var UpColors = []UpColor{UpGreen, UpRed, UpMono}
 
+// Shade is which green or red gains and losses are drawn in: macOS's
+// system color, or a shade of Tailwind CSS's palette.
+type Shade string
+
+// ShadeSystem is macOS's system green or red, brighter in the dark.
+const ShadeSystem Shade = "system"
+
+// Shades lists the choices in menu order, light to dark.
+var Shades = []Shade{ShadeSystem, "300", "400", "500", "600", "700"}
+
 // TextSize scales the panel's fonts and width.
 type TextSize string
 
@@ -76,6 +86,8 @@ type Config struct {
 	FinnhubKey   string   `json:"finnhubKey"`
 	PollSeconds  float64  `json:"pollSeconds"`
 	UpColor      UpColor  `json:"upColor"`
+	GreenShade   Shade    `json:"greenShade"`
+	RedShade     Shade    `json:"redShade"`
 	ClickThrough bool     `json:"clickThrough"`
 	Language     Language `json:"language"`
 	// Hotkey hides and shows the panel from any app, written like
@@ -121,6 +133,8 @@ func Default() Config {
 		Symbols:     []string{"usAAPL", "usNVDA", "usTSLA"},
 		PollSeconds: 3,
 		UpColor:     UpGreen,
+		GreenShade:  ShadeSystem,
+		RedShade:    ShadeSystem,
 		Language:    LanguageSystem,
 		Hotkey:      "ctrl+opt+s",
 		TextSize:    TextSmall,
@@ -145,6 +159,12 @@ func Decode(data []byte) (Config, error) {
 	c.Opacity = min(1, max(0.3, c.Opacity))
 	if !slices.Contains(UpColors, c.UpColor) {
 		c.UpColor = d.UpColor
+	}
+	if !slices.Contains(Shades, c.GreenShade) {
+		c.GreenShade = d.GreenShade
+	}
+	if !slices.Contains(Shades, c.RedShade) {
+		c.RedShade = d.RedShade
 	}
 	if !slices.Contains(TextSizes, c.TextSize) {
 		c.TextSize = d.TextSize

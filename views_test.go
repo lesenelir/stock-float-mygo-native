@@ -72,6 +72,14 @@ func TestPanelFollowsTheLanguage(t *testing.T) {
 	}
 }
 
+func TestChangesTakeTheChosenShades(t *testing.T) {
+	p := colors(&ui.Theme{}, PanelState{GreenShade: "500", RedShade: config.ShadeSystem})
+
+	if p.green != tailwindGreens["500"] || p.red != ui.Hex("#ff3b30") {
+		t.Errorf("green %v, red %v", p.green, p.red)
+	}
+}
+
 func TestSettingsSayWhichSymbolsAreNotRecognized(t *testing.T) {
 	f := &settingsForm{app: testApp(t, nil), s: l10n.For(config.LanguageEn, ""), symbols: "AAPL\n苹果\n1234"}
 	tt := ui.NewTester(f.view, 392, 480)

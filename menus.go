@@ -66,7 +66,12 @@ func (a *App) appearanceMenu(s l10n.Strings, cfg config.Config) []*mygo.MenuItem
 			a.change(func(c *config.Config) { c.UpColor = color })
 		}))
 	}
-	items = append(items, header(s.TextSize()))
+	// The shades only matter while gains and losses are colored.
+	mono := cfg.UpColor == config.UpMono
+	items = append(items,
+		&mygo.MenuItem{Label: s.Green(), Disabled: mono, Submenu: a.shadeMenu(s, "green", cfg.GreenShade, func(c *config.Config, shade config.Shade) { c.GreenShade = shade })},
+		&mygo.MenuItem{Label: s.Red(), Disabled: mono, Submenu: a.shadeMenu(s, "red", cfg.RedShade, func(c *config.Config, shade config.Shade) { c.RedShade = shade })},
+		header(s.TextSize()))
 	for _, size := range config.TextSizes {
 		items = append(items, choice(s.TextSizeName(size), cfg.TextSize == size, func() {
 			a.change(func(c *config.Config) { c.TextSize = size })
@@ -80,6 +85,18 @@ func (a *App) appearanceMenu(s l10n.Strings, cfg config.Config) []*mygo.MenuItem
 	}
 	return append(items, mygo.Separator(),
 		toggle(s.Flash(), cfg.Flash, func() { a.change(func(c *config.Config) { c.Flash = !c.Flash }) }))
+}
+
+// shadeMenu picks the shade of green or red, named as Tailwind CSS names
+// its colors, such as green-500.
+func (a *App) shadeMenu(s l10n.Strings, color string, current config.Shade, set func(*config.Config, config.Shade)) []*mygo.MenuItem {
+	var items []*mygo.MenuItem
+	for _, shade := range config.Shades {
+		items = append(items, choice(s.ShadeName(color, shade), current == shade, func() {
+			a.change(func(c *config.Config) { set(c, shade) })
+		}))
+	}
+	return items
 }
 
 func (a *App) languageMenu(s l10n.Strings, cfg config.Config) []*mygo.MenuItem {

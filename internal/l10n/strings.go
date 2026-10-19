@@ -118,6 +118,17 @@ func (s Strings) UpColor(c config.UpColor) string {
 	return s.t("绿涨红跌", "Green up, red down")
 }
 
+func (s Strings) Green() string { return s.t("绿色", "Green") }
+func (s Strings) Red() string   { return s.t("红色", "Red") }
+
+// ShadeName names a shade of green or red as Tailwind CSS does.
+func (s Strings) ShadeName(color string, shade config.Shade) string {
+	if shade == config.ShadeSystem {
+		return s.t("系统默认", "System")
+	}
+	return color + "-" + string(shade)
+}
+
 func (s Strings) TextSizeName(size config.TextSize) string {
 	switch size {
 	case config.TextMedium:

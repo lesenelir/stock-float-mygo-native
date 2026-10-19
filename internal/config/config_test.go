@@ -50,11 +50,12 @@ func TestKeepsOpacityInRange(t *testing.T) {
 }
 
 func TestUnknownChoicesFallBackToDefaults(t *testing.T) {
-	c, err := Decode([]byte(`{"upColor":"blue","textSize":"huge","language":"fr"}`))
+	c, err := Decode([]byte(`{"upColor":"blue","greenShade":"950","redShade":"","textSize":"huge","language":"fr"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.UpColor != UpGreen || c.TextSize != TextSmall || c.Language != LanguageSystem {
+	if c.UpColor != UpGreen || c.GreenShade != ShadeSystem || c.RedShade != ShadeSystem ||
+		c.TextSize != TextSmall || c.Language != LanguageSystem {
 		t.Errorf("got %+v", c)
 	}
 }
@@ -64,6 +65,8 @@ func TestRoundTripsThroughDisk(t *testing.T) {
 	c := Default()
 	c.Symbols = []string{"hk00700"}
 	c.UpColor = UpRed
+	c.GreenShade = "400"
+	c.RedShade = "600"
 	c.ClickThrough = true
 	c.Language = LanguageEn
 	c.Hotkey = "cmd+shift+9"

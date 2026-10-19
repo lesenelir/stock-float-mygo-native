@@ -22,6 +22,8 @@ type PanelState struct {
 	// is on screen all day.
 	UpdateHint string
 	UpColor    config.UpColor
+	// GreenShade and RedShade are the green and red the changes are in.
+	GreenShade, RedShade config.Shade
 	// Flash is whether price moves light up their row.
 	Flash bool
 	// Scale multiplies the fonts and the width of the panel.
@@ -61,10 +63,12 @@ type RowExtended struct {
 // panelState builds what the panel shows from the store's state.
 func panelState(snap Snapshot, s l10n.Strings, update string) PanelState {
 	state := PanelState{
-		Rows:    make([]Row, 0, len(snap.Config.Symbols)),
-		UpColor: snap.Config.UpColor,
-		Flash:   snap.Config.Flash,
-		Scale:   snap.Config.TextSize.Scale(),
+		Rows:       make([]Row, 0, len(snap.Config.Symbols)),
+		UpColor:    snap.Config.UpColor,
+		GreenShade: snap.Config.GreenShade,
+		RedShade:   snap.Config.RedShade,
+		Flash:      snap.Config.Flash,
+		Scale:      snap.Config.TextSize.Scale(),
 	}
 	for _, id := range snap.Config.Symbols {
 		q, ok := snap.Quotes[id]
