@@ -106,6 +106,7 @@ func (s Strings) Appearance() string       { return s.t("外观", "Appearance") 
 func (s Strings) Colors() string           { return s.t("配色", "Colors") }
 func (s Strings) TextSize() string         { return s.t("字号", "Text Size") }
 func (s Strings) Opacity() string          { return s.t("不透明度", "Opacity") }
+func (s Strings) Flash() string            { return s.t("价格变动时闪烁", "Flash on price change") }
 
 func (s Strings) UpColor(c config.UpColor) string {
 	switch c {

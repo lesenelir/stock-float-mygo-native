@@ -87,6 +87,8 @@ type Config struct {
 	// DockIcon shows the app in the Dock and the Command-Tab switcher; the
 	// menu bar icon is always there.
 	DockIcon bool `json:"dockIcon"`
+	// Flash lights up a row in the color of each regular-session move.
+	Flash bool `json:"flash"`
 	// Alerts are the price alerts waiting to go off, for symbols of the
 	// watch list.
 	Alerts []Alert `json:"alerts,omitempty"`
@@ -124,6 +126,7 @@ func Default() Config {
 		TextSize:    TextSmall,
 		Opacity:     1,
 		DockIcon:    true,
+		Flash:       true,
 	}
 }
 

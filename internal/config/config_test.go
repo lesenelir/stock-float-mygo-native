@@ -70,6 +70,7 @@ func TestRoundTripsThroughDisk(t *testing.T) {
 	c.TextSize = TextLarge
 	c.Opacity = 0.7
 	c.DockIcon = false
+	c.Flash = false
 
 	if err := c.Save(path); err != nil {
 		t.Fatal(err)

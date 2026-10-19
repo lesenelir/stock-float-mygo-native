@@ -78,7 +78,8 @@ func (a *App) appearanceMenu(s l10n.Strings, cfg config.Config) []*mygo.MenuItem
 			a.change(func(c *config.Config) { c.Opacity = opacity })
 		}))
 	}
-	return items
+	return append(items, mygo.Separator(),
+		toggle(s.Flash(), cfg.Flash, func() { a.change(func(c *config.Config) { c.Flash = !c.Flash }) }))
 }
 
 func (a *App) languageMenu(s l10n.Strings, cfg config.Config) []*mygo.MenuItem {

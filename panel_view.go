@@ -159,12 +159,13 @@ func (a *App) quoteRow(c *ui.Context, row Row, state PanelState, now time.Time) 
 		el.Opacity(0.45)
 	}
 
-	// Only regular-session moves flash; extended-hours ticks update quietly.
+	// Only regular-session moves flash, and only while the user wants them
+	// to; extended-hours ticks update quietly.
 	f := a.flashes[row.Symbol]
 	if q != nil {
 		old, seen := a.lastPrices[row.Symbol]
 		a.lastPrices[row.Symbol] = q.Price
-		if seen && old != q.Price && q.Extended == nil {
+		if state.Flash && seen && old != q.Price && q.Extended == nil {
 			if f == nil {
 				f = &flash{}
 				a.flashes[row.Symbol] = f
@@ -173,7 +174,7 @@ func (a *App) quoteRow(c *ui.Context, row Row, state PanelState, now time.Time) 
 			f.color = tint(q.Price-old, state.UpColor, p, p.gray)
 		}
 	}
-	if f != nil {
+	if f != nil && state.Flash {
 		lit := el.Keyframes("flash", []ui.Keyframe{
 			{Value: 0},
 			{At: 100 * time.Millisecond, Value: 0.3, Ease: ui.EaseOut},
